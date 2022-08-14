@@ -54,12 +54,7 @@ fn parse_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
             Ok((data, ParsedValue::Block(result)))
         }
         _ => {
-            let (data, c) = permutation((
-                multispace0,
-                terminated(take_while(is_allowed_string), char(';')),
-                multispace0,
-            ))(data)?;
-
+            let (data, c) = permutation((multispace0, parse_inline_value, multispace0))(data)?;
             Ok((
                 data,
                 ParsedValue::Value(vec![String::from_utf8(c.1.to_vec()).unwrap()]),
@@ -68,25 +63,30 @@ fn parse_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
     }
 }
 
+fn parse_inline_value(data: &[u8]) -> IResult<&[u8], &[u8]> {
+    let (data, v) = terminated(take_while(is_allowed_string), char(';'))(data)?;
+    Ok((data, v))
+}
+
 fn is_allowed_string(c: u8) -> bool {
     is_alphanumeric(c) || c == b'.' || c == b'_'
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse;
-    use crate::parser::{ParsedConfig, ParsedValue};
-
-    const CONFIG: &str = "
-    http {
-        listen 80;
-        server_name example.com;
-    }
-    ";
+    use crate::parser::{parse, parse_inline_value, ParsedConfig, ParsedValue};
 
     #[test]
     fn test_parse() {
-        let (_, result) = parse(CONFIG.as_bytes()).unwrap();
+        let (_, result) = parse(
+            "
+            http {
+                listen 80;
+                server_name example.com;
+            }"
+            .as_bytes(),
+        )
+        .unwrap();
         assert_eq!(
             result,
             vec![ParsedConfig {
@@ -103,5 +103,11 @@ mod tests {
                 ]),
             }]
         );
+    }
+
+    #[test]
+    fn test_parse_inline_value() {
+        let (_, result) = parse_inline_value("example.com;".as_bytes()).unwrap();
+        assert_eq!(result, b"example.com",);
     }
 }
