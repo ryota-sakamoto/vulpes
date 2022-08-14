@@ -2,12 +2,11 @@ use nom::{
     branch::permutation,
     bytes::complete::take_while,
     character::{
-        complete::{char, multispace0},
+        complete::{anychar, char, multispace0},
         is_alphanumeric,
     },
     combinator::peek,
     multi::many0,
-    number::complete::be_u8,
     sequence::{delimited, terminated},
     IResult,
 };
@@ -44,9 +43,9 @@ pub fn parse(data: &[u8]) -> IResult<&[u8], Vec<ParsedConfig>> {
 
 fn parse_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
     let (data, _) = multispace0(data)?;
-    let (_, c) = peek(be_u8)(data)?;
+    let (_, c) = peek(anychar)(data)?;
     match c {
-        123 => {
+        '{' => {
             let (data, result) = delimited(
                 permutation((multispace0, char('{'), multispace0)),
                 parse,
