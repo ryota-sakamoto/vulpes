@@ -1,7 +1,8 @@
 use structopt::StructOpt;
+use vulpes_config::Config;
 
 #[derive(StructOpt, Debug)]
-struct Config {
+struct LaunchConfig {
     #[structopt(short, long)]
     debug: bool,
 
@@ -10,6 +11,6 @@ struct Config {
 }
 
 fn main() {
-    let config = Config::from_args();
+    let config = LaunchConfig::from_args();
     println!("{:?}", config);
 }
