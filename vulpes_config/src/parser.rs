@@ -54,18 +54,23 @@ fn parse_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
             Ok((data, ParsedValue::Block(result)))
         }
         _ => {
-            let (data, c) = permutation((multispace0, parse_inline_value, multispace0))(data)?;
+            let (data, c) =
+                permutation((multispace0, parse_inline_multi_value, multispace0))(data)?;
             Ok((
                 data,
-                ParsedValue::Value(vec![String::from_utf8(c.1.to_vec()).unwrap()]),
+                ParsedValue::Value(
+                    c.1.into_iter()
+                        .map(|v| String::from_utf8(v.to_vec()).unwrap())
+                        .collect(),
+                ),
             ))
         }
     }
 }
 
-fn parse_inline_value(data: &[u8]) -> IResult<&[u8], &[u8]> {
+fn parse_inline_multi_value(data: &[u8]) -> IResult<&[u8], Vec<&[u8]>> {
     let (data, v) = terminated(take_while(is_allowed_string), char(';'))(data)?;
-    Ok((data, v))
+    Ok((data, vec![v]))
 }
 
 fn is_allowed_string(c: u8) -> bool {
@@ -74,7 +79,7 @@ fn is_allowed_string(c: u8) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{parse, parse_inline_value, ParsedConfig, ParsedValue};
+    use crate::parser::{parse, parse_inline_multi_value, ParsedConfig, ParsedValue};
 
     #[test]
     fn test_parse() {
@@ -106,8 +111,8 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_inline_value() {
-        let (_, result) = parse_inline_value("example.com;".as_bytes()).unwrap();
-        assert_eq!(result, b"example.com",);
+    fn test_parse_inline_multi_value() {
+        let (_, result) = parse_inline_multi_value("example.com;".as_bytes()).unwrap();
+        assert_eq!(result, vec![b"example.com"]);
     }
 }
