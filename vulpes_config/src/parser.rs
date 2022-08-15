@@ -46,11 +46,7 @@ fn parse_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
     let (_, c) = peek(anychar)(data)?;
     match c {
         '{' => {
-            let (data, result) = delimited(
-                permutation((multispace0, char('{'), multispace0)),
-                parse,
-                permutation((multispace0, char('}'), multispace0)),
-            )(data)?;
+            let (data, result) = parse_block(data)?;
             Ok((data, ParsedValue::Block(result)))
         }
         _ => {
@@ -69,6 +65,14 @@ fn parse_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
     }
 }
 
+fn parse_block(data: &[u8]) -> IResult<&[u8], Vec<ParsedConfig>> {
+    delimited(
+        permutation((multispace0, char('{'), multispace0)),
+        parse,
+        permutation((multispace0, char('}'), multispace0)),
+    )(data)
+}
+
 fn parse_inline_multi_value(data: &[u8]) -> IResult<&[u8], Vec<&[u8]>> {
     terminated(
         separated_list1(multispace1, take_while(is_allowed_string)),
@@ -82,7 +86,7 @@ fn is_allowed_string(c: u8) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{parse, parse_inline_multi_value, ParsedConfig, ParsedValue};
+    use crate::parser::{parse, parse_block, parse_inline_multi_value, ParsedConfig, ParsedValue};
 
     #[test]
     fn test_parse() {
@@ -118,6 +122,26 @@ mod tests {
                     },
                 ]),
             }]
+        );
+    }
+
+    #[test]
+    fn test_parse_block() {
+        let (data, result) = parse_block(
+            "{
+                listen 80;
+            }"
+            .as_bytes(),
+        )
+        .unwrap();
+
+        assert_eq!(data, vec![]);
+        assert_eq!(
+            result,
+            vec![ParsedConfig {
+                label: "listen".to_owned(),
+                value: ParsedValue::Value(vec!["80".to_owned()])
+            },]
         );
     }
 
