@@ -20,7 +20,8 @@ pub struct ParsedConfig {
 #[derive(Debug, PartialEq)]
 enum ParsedValue {
     Block(Vec<ParsedConfig>),
-    Value(Vec<String>),
+    Value(Vec<ParsedValue>),
+    String(String),
 }
 
 pub fn parse(data: &[u8]) -> IResult<&[u8], Vec<ParsedConfig>> {
@@ -57,7 +58,7 @@ fn parse_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
                 data,
                 ParsedValue::Value(
                     c.1.into_iter()
-                        .map(|v| String::from_utf8(v.to_vec()).unwrap())
+                        .map(|v| ParsedValue::String(String::from_utf8(v.to_vec()).unwrap()))
                         .collect(),
                 ),
             ))
@@ -107,17 +108,19 @@ mod tests {
                 value: ParsedValue::Block(vec![
                     ParsedConfig {
                         label: "listen".to_owned(),
-                        value: ParsedValue::Value(vec!["80".to_owned()])
+                        value: ParsedValue::Value(vec![ParsedValue::String("80".to_owned())])
                     },
                     ParsedConfig {
                         label: "server_name".to_owned(),
-                        value: ParsedValue::Value(vec!["example.com".to_owned()])
+                        value: ParsedValue::Value(vec![ParsedValue::String(
+                            "example.com".to_owned()
+                        )])
                     },
                     ParsedConfig {
                         label: "index".to_owned(),
                         value: ParsedValue::Value(vec![
-                            "index.html".to_owned(),
-                            "index.htm".to_owned()
+                            ParsedValue::String("index.html".to_owned()),
+                            ParsedValue::String("index.htm".to_owned()),
                         ])
                     },
                 ]),
@@ -140,7 +143,7 @@ mod tests {
             result,
             vec![ParsedConfig {
                 label: "listen".to_owned(),
-                value: ParsedValue::Value(vec!["80".to_owned()])
+                value: ParsedValue::Value(vec![ParsedValue::String("80".to_owned())])
             },]
         );
     }
