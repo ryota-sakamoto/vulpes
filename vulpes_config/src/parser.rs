@@ -3,9 +3,9 @@ use nom::{
     bytes::complete::take_while,
     character::{
         complete::{anychar, char, multispace0, multispace1},
-        is_alphanumeric,
+        is_space,
     },
-    combinator::peek,
+    combinator::{map, peek},
     multi::{many0, separated_list1},
     sequence::{delimited, terminated},
     IResult,
@@ -46,43 +46,42 @@ fn parse_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
     let (data, _) = multispace0(data)?;
     let (_, c) = peek(anychar)(data)?;
     match c {
-        '{' => {
-            let (data, result) = parse_block(data)?;
-            Ok((data, ParsedValue::Block(result)))
-        }
+        '{' => parse_block(data),
         _ => {
-            let (data, c) =
+            let (data, result) =
                 permutation((multispace0, parse_inline_multi_value, multispace0))(data)?;
 
-            Ok((
-                data,
-                ParsedValue::Value(
-                    c.1.into_iter()
-                        .map(|v| ParsedValue::String(String::from_utf8(v.to_vec()).unwrap()))
-                        .collect(),
-                ),
-            ))
+            Ok((data, result.1))
         }
     }
 }
 
-fn parse_block(data: &[u8]) -> IResult<&[u8], Vec<ParsedConfig>> {
-    delimited(
-        permutation((multispace0, char('{'), multispace0)),
-        parse,
-        permutation((multispace0, char('}'), multispace0)),
+fn parse_block(data: &[u8]) -> IResult<&[u8], ParsedValue> {
+    map(
+        delimited(
+            permutation((multispace0, char('{'), multispace0)),
+            parse,
+            permutation((multispace0, char('}'), multispace0)),
+        ),
+        ParsedValue::Block,
     )(data)
 }
 
-fn parse_inline_multi_value(data: &[u8]) -> IResult<&[u8], Vec<&[u8]>> {
-    terminated(
-        separated_list1(multispace1, take_while(is_allowed_string)),
-        char(';'),
+fn parse_inline_multi_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
+    map(
+        terminated(separated_list1(multispace1, parse_string), char(';')),
+        ParsedValue::Value,
     )(data)
+}
+
+fn parse_string(data: &[u8]) -> IResult<&[u8], ParsedValue> {
+    map(take_while(is_allowed_string), |v: &[u8]| {
+        ParsedValue::String(String::from_utf8(v.to_vec()).unwrap())
+    })(data)
 }
 
 fn is_allowed_string(c: u8) -> bool {
-    is_alphanumeric(c) || c == b'.' || c == b'_'
+    !is_space(c) && c != b';'
 }
 
 #[cfg(test)]
@@ -141,10 +140,10 @@ mod tests {
         assert_eq!(data, vec![]);
         assert_eq!(
             result,
-            vec![ParsedConfig {
+            ParsedValue::Block(vec![ParsedConfig {
                 label: "listen".to_owned(),
                 value: ParsedValue::Value(vec![ParsedValue::String("80".to_owned())])
-            },]
+            }])
         );
     }
 
@@ -153,7 +152,10 @@ mod tests {
         let (data, result) = parse_inline_multi_value("example.com;".as_bytes()).unwrap();
 
         assert_eq!(data, vec![]);
-        assert_eq!(result, vec![b"example.com"]);
+        assert_eq!(
+            result,
+            ParsedValue::Value(vec![ParsedValue::String("example.com".to_owned())])
+        );
     }
 
     #[test]
@@ -163,7 +165,10 @@ mod tests {
         assert_eq!(data, vec![]);
         assert_eq!(
             result,
-            vec!["index.html".as_bytes(), "index.htm".as_bytes()]
+            ParsedValue::Value(vec![
+                ParsedValue::String("index.html".to_owned()),
+                ParsedValue::String("index.htm".to_owned())
+            ])
         );
     }
 }
