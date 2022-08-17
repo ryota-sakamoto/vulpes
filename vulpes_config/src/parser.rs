@@ -1,5 +1,5 @@
 use nom::{
-    branch::permutation,
+    branch::{alt, permutation},
     bytes::complete::take_while,
     character::{
         complete::{anychar, char, multispace0, multispace1},
@@ -25,11 +25,7 @@ enum ParsedValue {
 }
 
 pub fn parse(data: &[u8]) -> IResult<&[u8], Vec<ParsedConfig>> {
-    let (data, v) = many0(permutation((
-        multispace0,
-        take_while(is_allowed_string),
-        parse_value,
-    )))(data)?;
+    let (data, v) = many0(permutation((multispace0, parse_label, parse_value)))(data)?;
 
     return Ok((
         data,
@@ -40,6 +36,18 @@ pub fn parse(data: &[u8]) -> IResult<&[u8], Vec<ParsedConfig>> {
             })
             .collect(),
     ));
+}
+
+fn parse_label(data: &[u8]) -> IResult<&[u8], &[u8]> {
+    let (_data, label) = take_while(is_allowed_string)(data)?;
+    if label.len() == 0 {
+        return Err(nom::Err::Error(nom::error::ParseError::from_error_kind(
+            data,
+            nom::error::ErrorKind::Eof,
+        )));
+    }
+
+    return Ok((_data, label));
 }
 
 fn parse_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
@@ -69,7 +77,10 @@ fn parse_block(data: &[u8]) -> IResult<&[u8], ParsedValue> {
 
 fn parse_inline_multi_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
     map(
-        terminated(separated_list1(multispace1, parse_string), char(';')),
+        alt((
+            terminated(separated_list1(multispace1, parse_string), char(';')),
+            separated_list1(multispace1, alt((parse_block, parse_string))),
+        )),
         ParsedValue::Value,
     )(data)
 }
@@ -81,7 +92,7 @@ fn parse_string(data: &[u8]) -> IResult<&[u8], ParsedValue> {
 }
 
 fn is_allowed_string(c: u8) -> bool {
-    !is_space(c) && c != b';'
+    !is_space(c) && c != b';' && c != b'{' && c != b'}'
 }
 
 #[cfg(test)]
@@ -96,6 +107,10 @@ mod tests {
                 listen 80;
                 server_name example.com;
                 index index.html index.htm;
+
+                location / {
+                    alias /var/www/html/;
+                }
             }"
             .as_bytes(),
         )
@@ -120,6 +135,18 @@ mod tests {
                         value: ParsedValue::Value(vec![
                             ParsedValue::String("index.html".to_owned()),
                             ParsedValue::String("index.htm".to_owned()),
+                        ])
+                    },
+                    ParsedConfig {
+                        label: "location".to_owned(),
+                        value: ParsedValue::Value(vec![
+                            ParsedValue::String("/".to_owned()),
+                            ParsedValue::Block(vec![ParsedConfig {
+                                label: "alias".to_owned(),
+                                value: ParsedValue::Value(vec![ParsedValue::String(
+                                    "/var/www/html/".to_owned()
+                                )])
+                            },])
                         ])
                     },
                 ]),
@@ -168,6 +195,31 @@ mod tests {
             ParsedValue::Value(vec![
                 ParsedValue::String("index.html".to_owned()),
                 ParsedValue::String("index.htm".to_owned())
+            ])
+        );
+    }
+
+    #[test]
+    fn test_parse_inline_value_block() {
+        let (data, result) = parse_inline_multi_value(
+            "/ {
+                alias /var/www/html/;
+            }"
+            .as_bytes(),
+        )
+        .unwrap();
+
+        assert_eq!(data, vec![]);
+        assert_eq!(
+            result,
+            ParsedValue::Value(vec![
+                ParsedValue::String("/".to_owned()),
+                ParsedValue::Block(vec![ParsedConfig {
+                    label: "alias".to_owned(),
+                    value: ParsedValue::Value(vec![ParsedValue::String(
+                        "/var/www/html/".to_owned()
+                    )])
+                },])
             ])
         );
     }
