@@ -13,15 +13,24 @@ use nom::{
 
 #[derive(Debug, PartialEq)]
 pub struct ParsedConfig {
-    label: String,
-    value: ParsedValue,
+    pub label: String,
+    pub value: ParsedValue,
 }
 
 #[derive(Debug, PartialEq)]
-enum ParsedValue {
+pub enum ParsedValue {
     Block(Vec<ParsedConfig>),
     Value(Vec<ParsedValue>),
     String(String),
+}
+
+impl ParsedValue {
+    pub fn get_string(&self) -> Result<&str, ()> {
+        match self {
+            ParsedValue::String(v) => Ok(v),
+            _ => Err(()),
+        }
+    }
 }
 
 pub fn parse(data: &[u8]) -> IResult<&[u8], Vec<ParsedConfig>> {
