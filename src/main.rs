@@ -1,16 +1,15 @@
-use structopt::StructOpt;
-use vulpes_config::Config;
+use clap::Parser;
 
-#[derive(StructOpt, Debug)]
+#[derive(Parser, Debug)]
 struct LaunchConfig {
-    #[structopt(short, long)]
+    #[clap(long)]
     debug: bool,
 
-    #[structopt(short, long, default_value = "/etc/vulpes/vulpes.conf")]
+    #[clap(short, long, default_value = "/etc/vulpes/vulpes.conf")]
     config: String,
 }
 
 fn main() {
-    let config = LaunchConfig::from_args();
+    let config = LaunchConfig::parse();
     println!("{:?}", config);
 }
