@@ -7,10 +7,13 @@ edition = "2021"
 
 [dependencies]
 clap = { version = "4.3.0", features = ["derive"] }
+tokio = { version = "1.28.1", features = ["full"] }
 
 vulpes_config = { path = "./vulpes_config" }
+vulpes_server = { path = "./vulpes_server" }
 
 [workspace]
 members = [
     "vulpes_config",
+    "vulpes_server",
 ]

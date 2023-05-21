@@ -10,7 +10,8 @@ struct LaunchConfig {
     config: String,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let launch_config = LaunchConfig::parse();
     println!("launch_config: {:?}", launch_config);
 
@@ -23,4 +24,6 @@ fn main() {
 
     let config = vulpes_config::Config::try_from(parsed_config).unwrap();
     println!("config: {:?}", config);
+
+    vulpes_server::new(config).run().await;
 }
