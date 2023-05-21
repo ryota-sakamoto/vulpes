@@ -113,12 +113,14 @@ mod tests {
         let (_, result) = parse(
             "
             http {
-                listen 80;
-                server_name example.com;
-                index index.html index.htm;
+                server {
+                    listen 80;
+                    server_name example.com;
+                    index index.html index.htm;
 
-                location / {
-                    alias /var/www/html/;
+                    location / {
+                        alias /var/www/html/;
+                    }
                 }
             }"
             .as_bytes(),
@@ -128,37 +130,40 @@ mod tests {
             result,
             vec![ParsedConfig {
                 label: "http".to_owned(),
-                value: ParsedValue::Block(vec![
-                    ParsedConfig {
-                        label: "listen".to_owned(),
-                        value: ParsedValue::Value(vec![ParsedValue::String("80".to_owned())])
-                    },
-                    ParsedConfig {
-                        label: "server_name".to_owned(),
-                        value: ParsedValue::Value(vec![ParsedValue::String(
-                            "example.com".to_owned()
-                        )])
-                    },
-                    ParsedConfig {
-                        label: "index".to_owned(),
-                        value: ParsedValue::Value(vec![
-                            ParsedValue::String("index.html".to_owned()),
-                            ParsedValue::String("index.htm".to_owned()),
-                        ])
-                    },
-                    ParsedConfig {
-                        label: "location".to_owned(),
-                        value: ParsedValue::Value(vec![
-                            ParsedValue::String("/".to_owned()),
-                            ParsedValue::Block(vec![ParsedConfig {
-                                label: "alias".to_owned(),
-                                value: ParsedValue::Value(vec![ParsedValue::String(
-                                    "/var/www/html/".to_owned()
-                                )])
-                            },])
-                        ])
-                    },
-                ]),
+                value: ParsedValue::Block(vec![ParsedConfig {
+                    label: "server".to_owned(),
+                    value: ParsedValue::Block(vec![
+                        ParsedConfig {
+                            label: "listen".to_owned(),
+                            value: ParsedValue::Value(vec![ParsedValue::String("80".to_owned())])
+                        },
+                        ParsedConfig {
+                            label: "server_name".to_owned(),
+                            value: ParsedValue::Value(vec![ParsedValue::String(
+                                "example.com".to_owned()
+                            )])
+                        },
+                        ParsedConfig {
+                            label: "index".to_owned(),
+                            value: ParsedValue::Value(vec![
+                                ParsedValue::String("index.html".to_owned()),
+                                ParsedValue::String("index.htm".to_owned()),
+                            ])
+                        },
+                        ParsedConfig {
+                            label: "location".to_owned(),
+                            value: ParsedValue::Value(vec![
+                                ParsedValue::String("/".to_owned()),
+                                ParsedValue::Block(vec![ParsedConfig {
+                                    label: "alias".to_owned(),
+                                    value: ParsedValue::Value(vec![ParsedValue::String(
+                                        "/var/www/html/".to_owned()
+                                    )])
+                                },])
+                            ])
+                        },
+                    ])
+                }]),
             }]
         );
     }
