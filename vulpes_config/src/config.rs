@@ -12,8 +12,8 @@ pub struct HttpConfig {
 
 #[derive(Debug, PartialEq, Default)]
 pub struct ServerConfig {
-    listen: u16,
-    server_name: String,
+    listen: Vec<String>,
+    server_name: Vec<String>,
 }
 
 impl TryFrom<Vec<ParsedConfig>> for Config {
@@ -70,11 +70,10 @@ impl TryFrom<ParsedValue> for ServerConfig {
             for v in v {
                 match v.label.as_ref() {
                     "listen" => {
-                        let s = v.value.get_string()?;
-                        c.listen = s.parse().unwrap();
+                        c.listen = v.value.try_into()?;
                     }
                     "server_name" => {
-                        c.server_name = v.value.get_string()?.to_string();
+                        c.server_name = v.value.try_into()?;
                     }
                     _ => {
                         println!("unknown label in server: {:?}", v.label);
@@ -94,53 +93,58 @@ mod tests {
     use crate::{
         config::{HttpConfig, ServerConfig},
         parser::{ParsedConfig, ParsedValue},
+        Config,
     };
 
     #[test]
-    fn test_http_config_try_from() {
-        let data = ParsedValue::Block(vec![ParsedConfig {
-            label: "server".to_owned(),
-            value: ParsedValue::Block(vec![
-                ParsedConfig {
-                    label: "listen".to_owned(),
-                    value: ParsedValue::String("80".to_owned()),
-                },
-                ParsedConfig {
-                    label: "server_name".to_owned(),
-                    value: ParsedValue::String("example.com".to_owned()),
-                },
-            ]),
-        }]);
-        let result = HttpConfig::try_from(data).unwrap();
+    fn test_try_from() {
+        let data = vec![ParsedConfig {
+            label: "http".to_owned(),
+            value: ParsedValue::Block(vec![ParsedConfig {
+                label: "server".to_owned(),
+                value: ParsedValue::Block(vec![
+                    ParsedConfig {
+                        label: "listen".to_owned(),
+                        value: ParsedValue::Value(vec![ParsedValue::String("80".to_owned())]),
+                    },
+                    ParsedConfig {
+                        label: "server_name".to_owned(),
+                        value: ParsedValue::Value(vec![ParsedValue::String(
+                            "example.com".to_owned(),
+                        )]),
+                    },
+                    ParsedConfig {
+                        label: "index".to_owned(),
+                        value: ParsedValue::Value(vec![
+                            ParsedValue::String("index.html".to_owned()),
+                            ParsedValue::String("index.htm".to_owned()),
+                        ]),
+                    },
+                    ParsedConfig {
+                        label: "location".to_owned(),
+                        value: ParsedValue::Value(vec![
+                            ParsedValue::String("/".to_owned()),
+                            ParsedValue::Block(vec![ParsedConfig {
+                                label: "alias".to_owned(),
+                                value: ParsedValue::Value(vec![ParsedValue::String(
+                                    "/var/www/html/".to_owned(),
+                                )]),
+                            }]),
+                        ]),
+                    },
+                ]),
+            }]),
+        }];
+        let result = Config::try_from(data).unwrap();
         assert_eq!(
             result,
-            HttpConfig {
-                server: vec![ServerConfig {
-                    listen: 80,
-                    server_name: "example.com".to_owned(),
-                }]
-            }
-        )
-    }
-
-    #[test]
-    fn test_server_config_try_from() {
-        let data = ParsedValue::Block(vec![
-            ParsedConfig {
-                label: "listen".to_owned(),
-                value: ParsedValue::String("80".to_owned()),
-            },
-            ParsedConfig {
-                label: "server_name".to_owned(),
-                value: ParsedValue::String("example.com".to_owned()),
-            },
-        ]);
-        let result = ServerConfig::try_from(data).unwrap();
-        assert_eq!(
-            result,
-            ServerConfig {
-                listen: 80,
-                server_name: "example.com".to_owned(),
+            Config {
+                http: vec![HttpConfig {
+                    server: vec![ServerConfig {
+                        listen: vec!["80".to_owned()],
+                        server_name: vec!["example.com".to_owned()],
+                    }]
+                },]
             }
         )
     }

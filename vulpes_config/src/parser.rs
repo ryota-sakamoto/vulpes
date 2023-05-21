@@ -24,10 +24,23 @@ pub enum ParsedValue {
     String(String),
 }
 
-impl ParsedValue {
-    pub fn get_string(&self) -> Result<&str, ()> {
+impl TryInto<Vec<String>> for ParsedValue {
+    type Error = ();
+
+    fn try_into(self) -> Result<Vec<String>, ()> {
         match self {
-            ParsedValue::String(v) => Ok(v),
+            ParsedValue::Value(v) => {
+                let mut result = Vec::with_capacity(v.len());
+                for v in v {
+                    if let ParsedValue::String(s) = &v {
+                        result.push(s.clone());
+                    } else {
+                        return Err(());
+                    }
+                }
+
+                return Ok(result);
+            }
             _ => Err(()),
         }
     }
@@ -235,6 +248,23 @@ mod tests {
                     )])
                 },])
             ])
+        );
+    }
+
+    #[test]
+    fn test_try_into() {
+        let data = ParsedConfig {
+            label: "test".to_owned(),
+            value: ParsedValue::Value(vec![
+                ParsedValue::String("a".to_owned()),
+                ParsedValue::String("b".to_owned()),
+                ParsedValue::String("c".to_owned()),
+            ]),
+        };
+        let result: Vec<String> = data.value.try_into().unwrap();
+        assert_eq!(
+            result,
+            vec!["a".to_owned(), "b".to_owned(), "c".to_owned(),]
         );
     }
 }
