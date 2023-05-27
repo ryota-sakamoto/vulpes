@@ -76,7 +76,7 @@ impl TryFrom<ParsedValue> for ServerConfig {
                         c.server_name = v.value.try_into()?;
                     }
                     _ => {
-                        println!("unknown label in server: {:?}", v.label);
+                        println!("unknown config in server: {}", v);
                     }
                 }
             }

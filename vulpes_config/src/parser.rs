@@ -17,11 +17,49 @@ pub struct ParsedConfig {
     pub value: ParsedValue,
 }
 
+struct ParsedConfigWrapper<'a> {
+    config: &'a ParsedConfig,
+    nest: usize,
+}
+
+impl std::fmt::Display for ParsedConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            ParsedConfigWrapper {
+                config: self,
+                nest: 0,
+            }
+        )
+    }
+}
+
+impl<'a> std::fmt::Display for ParsedConfigWrapper<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let prefix = "    ".repeat(self.nest);
+        write!(f, "{}{} ", prefix, self.config.label).unwrap();
+        write!(
+            f,
+            "{}",
+            ParsedValueWrapper {
+                value: &self.config.value,
+                nest: self.nest,
+            }
+        )
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub enum ParsedValue {
     Block(Vec<ParsedConfig>),
     Value(Vec<ParsedValue>),
     String(String),
+}
+
+struct ParsedValueWrapper<'a> {
+    value: &'a ParsedValue,
+    nest: usize,
 }
 
 impl TryInto<Vec<String>> for ParsedValue {
@@ -42,6 +80,55 @@ impl TryInto<Vec<String>> for ParsedValue {
                 return Ok(result);
             }
             _ => Err(()),
+        }
+    }
+}
+
+impl<'a> std::fmt::Display for ParsedValueWrapper<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let prefix = "    ".repeat(self.nest);
+        match self.value {
+            ParsedValue::Block(v) => {
+                write!(f, "{{\n").unwrap();
+                for v in v {
+                    write!(
+                        f,
+                        "{}\n",
+                        ParsedConfigWrapper {
+                            config: v,
+                            nest: self.nest + 1,
+                        }
+                    )
+                    .unwrap();
+                }
+                write!(f, "{}}}", prefix).unwrap();
+
+                Ok(())
+            }
+            ParsedValue::Value(v) => {
+                write!(
+                    f,
+                    "{}",
+                    v.iter()
+                        .map(|v| ParsedValueWrapper {
+                            value: v,
+                            nest: self.nest,
+                        }
+                        .to_string())
+                        .collect::<Vec<_>>()
+                        .join(" ")
+                )
+                .unwrap();
+
+                if let Some(ParsedValue::String(_)) = v.last() {
+                    write!(f, ";").unwrap();
+                }
+
+                Ok(())
+            }
+            ParsedValue::String(v) => {
+                write!(f, "{}", v)
+            }
         }
     }
 }
@@ -121,6 +208,46 @@ fn is_allowed_string(c: u8) -> bool {
 mod tests {
     use crate::parser::{parse, parse_block, parse_inline_multi_value, ParsedConfig, ParsedValue};
 
+    fn test_config() -> ParsedConfig {
+        ParsedConfig {
+            label: "http".to_owned(),
+            value: ParsedValue::Block(vec![ParsedConfig {
+                label: "server".to_owned(),
+                value: ParsedValue::Block(vec![
+                    ParsedConfig {
+                        label: "listen".to_owned(),
+                        value: ParsedValue::Value(vec![ParsedValue::String("80".to_owned())]),
+                    },
+                    ParsedConfig {
+                        label: "server_name".to_owned(),
+                        value: ParsedValue::Value(vec![ParsedValue::String(
+                            "example.com".to_owned(),
+                        )]),
+                    },
+                    ParsedConfig {
+                        label: "index".to_owned(),
+                        value: ParsedValue::Value(vec![
+                            ParsedValue::String("index.html".to_owned()),
+                            ParsedValue::String("index.htm".to_owned()),
+                        ]),
+                    },
+                    ParsedConfig {
+                        label: "location".to_owned(),
+                        value: ParsedValue::Value(vec![
+                            ParsedValue::String("/".to_owned()),
+                            ParsedValue::Block(vec![ParsedConfig {
+                                label: "alias".to_owned(),
+                                value: ParsedValue::Value(vec![ParsedValue::String(
+                                    "/var/www/html/".to_owned(),
+                                )]),
+                            }]),
+                        ]),
+                    },
+                ]),
+            }]),
+        }
+    }
+
     #[test]
     fn test_parse() {
         let (_, result) = parse(
@@ -139,46 +266,7 @@ mod tests {
             .as_bytes(),
         )
         .unwrap();
-        assert_eq!(
-            result,
-            vec![ParsedConfig {
-                label: "http".to_owned(),
-                value: ParsedValue::Block(vec![ParsedConfig {
-                    label: "server".to_owned(),
-                    value: ParsedValue::Block(vec![
-                        ParsedConfig {
-                            label: "listen".to_owned(),
-                            value: ParsedValue::Value(vec![ParsedValue::String("80".to_owned())])
-                        },
-                        ParsedConfig {
-                            label: "server_name".to_owned(),
-                            value: ParsedValue::Value(vec![ParsedValue::String(
-                                "example.com".to_owned()
-                            )])
-                        },
-                        ParsedConfig {
-                            label: "index".to_owned(),
-                            value: ParsedValue::Value(vec![
-                                ParsedValue::String("index.html".to_owned()),
-                                ParsedValue::String("index.htm".to_owned()),
-                            ])
-                        },
-                        ParsedConfig {
-                            label: "location".to_owned(),
-                            value: ParsedValue::Value(vec![
-                                ParsedValue::String("/".to_owned()),
-                                ParsedValue::Block(vec![ParsedConfig {
-                                    label: "alias".to_owned(),
-                                    value: ParsedValue::Value(vec![ParsedValue::String(
-                                        "/var/www/html/".to_owned()
-                                    )])
-                                },])
-                            ])
-                        },
-                    ])
-                }]),
-            }]
-        );
+        assert_eq!(result, vec![test_config()]);
     }
 
     #[test]
@@ -265,6 +353,24 @@ mod tests {
         assert_eq!(
             result,
             vec!["a".to_owned(), "b".to_owned(), "c".to_owned(),]
+        );
+    }
+
+    #[test]
+    fn test_config_to_string() {
+        let data = test_config();
+        assert_eq!(
+            data.to_string(),
+            "http {
+    server {
+        listen 80;
+        server_name example.com;
+        index index.html index.htm;
+        location / {
+            alias /var/www/html/;
+        }
+    }
+}"
         );
     }
 }
