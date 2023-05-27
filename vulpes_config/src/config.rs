@@ -2,18 +2,18 @@ use crate::parser::{ParsedConfig, ParsedValue};
 
 #[derive(Debug, PartialEq, Default)]
 pub struct Config {
-    http: Vec<HttpConfig>,
+    pub http: Vec<HttpConfig>,
 }
 
 #[derive(Debug, PartialEq, Default)]
 pub struct HttpConfig {
-    server: Vec<ServerConfig>,
+    pub server: Vec<ServerConfig>,
 }
 
 #[derive(Debug, PartialEq, Default)]
 pub struct ServerConfig {
-    listen: Vec<String>,
-    server_name: Vec<String>,
+    pub listen: Vec<String>,
+    pub server_name: Vec<String>,
 }
 
 impl TryFrom<Vec<ParsedConfig>> for Config {
