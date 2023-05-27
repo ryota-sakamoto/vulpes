@@ -1,4 +1,5 @@
 use crate::parser::{ParsedConfig, ParsedValue};
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Default)]
 pub struct Config {
@@ -14,6 +15,12 @@ pub struct HttpConfig {
 pub struct ServerConfig {
     pub listen: Vec<String>,
     pub server_name: Vec<String>,
+    pub location: HashMap<String, LocationConfig>,
+}
+
+#[derive(Debug, PartialEq, Default, Clone)]
+pub struct LocationConfig {
+    pub ret: u16,
 }
 
 impl TryFrom<Vec<ParsedConfig>> for Config {
@@ -75,10 +82,53 @@ impl TryFrom<ParsedValue> for ServerConfig {
                     "server_name" => {
                         c.server_name = v.value.try_into()?;
                     }
+                    "location" => {
+                        c.location = v.value.try_into()?;
+                    }
                     _ => {
                         println!("unknown config in server: {}", v);
                     }
                 }
+            }
+        } else {
+            return Err(());
+        }
+
+        return Ok(c);
+    }
+}
+
+impl TryFrom<ParsedValue> for HashMap<String, LocationConfig> {
+    type Error = ();
+
+    fn try_from(data: ParsedValue) -> Result<HashMap<String, LocationConfig>, ()> {
+        let mut c = Self::default();
+
+        if let ParsedValue::Value(mut v) = data {
+            let mut path = None;
+            let mut config = LocationConfig::default();
+
+            v.reverse();
+
+            if let Some(ParsedValue::String(label)) = v.pop() {
+                path = Some(label.to_owned());
+            }
+
+            if let Some(ParsedValue::Block(v)) = v.pop() {
+                for v in v {
+                    match v.label.as_ref() {
+                        "return" => {
+                            config.ret = v.value.try_into().unwrap();
+                        }
+                        _ => {
+                            println!("unknown config in location: {}", v);
+                        }
+                    }
+                }
+            }
+
+            if let Some(p) = path {
+                c.insert(p, config);
             }
         } else {
             return Err(());
@@ -143,6 +193,7 @@ mod tests {
                     server: vec![ServerConfig {
                         listen: vec!["80".to_owned()],
                         server_name: vec!["example.com".to_owned()],
+                        location: std::collections::HashMap::new(),
                     }]
                 },]
             }

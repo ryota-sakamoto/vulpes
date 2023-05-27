@@ -11,7 +11,7 @@ use nom::{
     IResult,
 };
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ParsedConfig {
     pub label: String,
     pub value: ParsedValue,
@@ -50,7 +50,7 @@ impl<'a> std::fmt::Display for ParsedConfigWrapper<'a> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum ParsedValue {
     Block(Vec<ParsedConfig>),
     Value(Vec<ParsedValue>),
@@ -80,6 +80,18 @@ impl TryInto<Vec<String>> for ParsedValue {
                 return Ok(result);
             }
             _ => Err(()),
+        }
+    }
+}
+
+impl TryInto<u16> for ParsedValue {
+    type Error = std::num::ParseIntError;
+
+    fn try_into(self) -> Result<u16, std::num::ParseIntError> {
+        match self {
+            ParsedValue::Value(v) if v.len() == 1 => v[0].clone().try_into(),
+            ParsedValue::String(v) => v.parse(),
+            _ => "".parse(),
         }
     }
 }
