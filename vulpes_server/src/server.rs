@@ -60,7 +60,12 @@ impl HttpServer {
 
         let mut buf = [0u8; 4096];
         let n = w.read(&mut buf).await?;
-        println!("{:?}", String::from_utf8(Vec::from(&buf[0..n])));
+
+        let mut headers = [httparse::EMPTY_HEADER; 16];
+        let mut req = httparse::Request::new(&mut headers);
+        req.parse(&buf[0..n]).unwrap();
+
+        println!("{:?}", req);
 
         w.write_all(b"HTTP/1.1 200 OK\r\n").await?;
         w.write_all(b"Content-Length: 0\r\n").await?;
