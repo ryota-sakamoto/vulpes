@@ -1,6 +1,5 @@
-mod config;
 mod error;
 mod parser;
 
-pub use config::{Config, LocationConfig};
-pub use parser::parse;
+pub use error::ParserError;
+pub use parser::{parse, ParsedConfig, ParsedValue};

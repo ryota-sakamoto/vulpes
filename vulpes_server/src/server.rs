@@ -1,9 +1,9 @@
+use crate::config::{Config, LocationConfig};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
     signal::unix::{signal, SignalKind},
 };
-use vulpes_parser::{Config, LocationConfig};
 
 pub fn new(config: Config) -> Server {
     Server { config: config }
@@ -80,7 +80,7 @@ impl HttpServer {
 
         let mut code = http::StatusCode::from_u16(200).unwrap();
         if let Some(location) = self.location.get(req.path.unwrap()) {
-            code = http::StatusCode::from_u16(location.ret).unwrap();
+            code = location.ret;
         }
 
         w.write_all(format!("HTTP/1.1 {}\r\n", code).as_bytes())

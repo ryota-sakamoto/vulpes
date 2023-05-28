@@ -24,7 +24,7 @@ async fn main() {
     let (_, parsed_config) = vulpes_parser::parse(buf.as_bytes()).unwrap();
     log::debug!("parsed_config: {:?}", parsed_config);
 
-    let config = vulpes_parser::Config::try_from(parsed_config).unwrap();
+    let config = vulpes_server::Config::try_from(parsed_config).unwrap();
     log::debug!("config: {:?}", config);
 
     vulpes_server::new(config).run().await;

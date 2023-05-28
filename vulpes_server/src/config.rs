@@ -1,8 +1,6 @@
-use crate::{
-    error::{ConfigError, ErrorKind},
-    parser::{ParsedConfig, ParsedValue},
-};
+use crate::error::{ConfigError, ErrorKind};
 use std::collections::HashMap;
+use vulpes_parser::{ParsedConfig, ParsedValue};
 
 #[derive(Debug, PartialEq, Default)]
 pub struct Config {
@@ -23,7 +21,8 @@ pub struct ServerConfig {
 
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct LocationConfig {
-    pub ret: u16,
+    pub path: String,
+    pub ret: http::StatusCode,
 }
 
 impl TryFrom<Vec<ParsedConfig>> for Config {
@@ -94,7 +93,8 @@ impl TryFrom<ParsedValue> for ServerConfig {
                         c.server_name = v.value.try_into()?;
                     }
                     "location" => {
-                        c.location = v.value.try_into()?;
+                        let location: LocationConfig = v.value.try_into()?;
+                        c.location.insert(location.path.clone(), location);
                     }
                     _ => {
                         log::warn!("unknown config in server: {}", v);
@@ -111,17 +111,16 @@ impl TryFrom<ParsedValue> for ServerConfig {
     }
 }
 
-impl TryFrom<ParsedValue> for HashMap<String, LocationConfig> {
+impl TryFrom<ParsedValue> for LocationConfig {
     type Error = ConfigError;
 
-    fn try_from(data: ParsedValue) -> Result<HashMap<String, LocationConfig>, ConfigError> {
+    fn try_from(data: ParsedValue) -> Result<LocationConfig, ConfigError> {
         let mut c = Self::default();
 
         if let ParsedValue::Value(mut v) = data {
             log::debug!("parse value in location: {:?}", v);
 
             let mut path = None;
-            let mut config = LocationConfig::default();
 
             v.reverse();
 
@@ -133,7 +132,8 @@ impl TryFrom<ParsedValue> for HashMap<String, LocationConfig> {
                 for v in v {
                     match v.label.as_ref() {
                         "return" => {
-                            config.ret = v.value.try_into()?;
+                            let code: u16 = v.value.try_into()?;
+                            c.ret = http::StatusCode::from_u16(code)?;
                         }
                         _ => {
                             log::warn!("unknown config in location: {}", v);
@@ -143,7 +143,7 @@ impl TryFrom<ParsedValue> for HashMap<String, LocationConfig> {
             }
 
             if let Some(p) = path {
-                c.insert(p, config);
+                c.path = p;
             }
         } else {
             return Err(ConfigError {
@@ -157,11 +157,8 @@ impl TryFrom<ParsedValue> for HashMap<String, LocationConfig> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        config::{HttpConfig, ServerConfig},
-        parser::{ParsedConfig, ParsedValue},
-        Config, LocationConfig,
-    };
+    use crate::config::{Config, HttpConfig, LocationConfig, ServerConfig};
+    use vulpes_parser::{ParsedConfig, ParsedValue};
 
     #[test]
     fn test_try_from() {
@@ -212,7 +209,10 @@ mod tests {
                         server_name: vec!["example.com".to_owned()],
                         location: std::collections::HashMap::from([(
                             "/".to_owned(),
-                            LocationConfig { ret: 0 }
+                            LocationConfig {
+                                path: "/".to_owned(),
+                                ret: http::StatusCode::OK,
+                            }
                         ),]),
                     }]
                 },]

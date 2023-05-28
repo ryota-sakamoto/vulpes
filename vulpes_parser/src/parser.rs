@@ -1,4 +1,4 @@
-use crate::error::{ConfigError, ErrorKind};
+use crate::error::{ErrorKind, ParserError};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::take_while,
@@ -64,9 +64,9 @@ struct ParsedValueWrapper<'a> {
 }
 
 impl TryInto<Vec<String>> for ParsedValue {
-    type Error = ConfigError;
+    type Error = ParserError;
 
-    fn try_into(self) -> Result<Vec<String>, ConfigError> {
+    fn try_into(self) -> Result<Vec<String>, ParserError> {
         match self {
             ParsedValue::Value(v) => {
                 let mut result = Vec::with_capacity(v.len());
@@ -74,7 +74,7 @@ impl TryInto<Vec<String>> for ParsedValue {
                     if let ParsedValue::String(s) = v {
                         result.push(s);
                     } else {
-                        return Err(ConfigError {
+                        return Err(ParserError {
                             kind: ErrorKind::UnexpectedType { value: v },
                         });
                     }
@@ -82,7 +82,7 @@ impl TryInto<Vec<String>> for ParsedValue {
 
                 return Ok(result);
             }
-            _ => Err(ConfigError {
+            _ => Err(ParserError {
                 kind: ErrorKind::UnexpectedType { value: self },
             }),
         }
