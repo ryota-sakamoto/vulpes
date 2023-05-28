@@ -9,4 +9,5 @@ edition = "2021"
 tokio = { version = "1.28.1", features = ["full"] }
 http = "0.2.9"
 httparse = "1.8.0"
+log = "0.4.18"
 vulpes_config = { path = "../vulpes_config" }

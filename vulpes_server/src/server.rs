@@ -25,7 +25,7 @@ impl Server {
             }
         }
 
-        println!("run");
+        log::info!("start server");
         loop {}
     }
 }
@@ -52,7 +52,7 @@ impl HttpServer {
         match self.handle_tcp(stream).await {
             Ok(_) => {}
             Err(e) => {
-                println!("{:?}", e);
+                log::error!("handle error: {:?}", e);
             }
         }
     }
@@ -70,7 +70,7 @@ impl HttpServer {
             _ => return Ok(()),
         }
 
-        println!("{:?}", req);
+        log::debug!("request header: {:?}", req);
 
         let mut code = http::StatusCode::from_u16(200).unwrap();
         if let Some(location) = self.location.get(req.path.unwrap()) {
