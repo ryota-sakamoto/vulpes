@@ -64,8 +64,6 @@ impl HttpServer {
 
     async fn handle_tcp(&self, stream: TcpStream) -> std::io::Result<()> {
         let peer_addr = stream.peer_addr().unwrap();
-        log::debug!("receive request from {:?}", peer_addr);
-
         let mut w = tokio::io::BufWriter::new(stream);
 
         let mut buf = [0u8; 4096];
@@ -78,7 +76,7 @@ impl HttpServer {
             _ => return Ok(()),
         }
 
-        log::debug!("request header: {:?}", req);
+        log::debug!("peer_addr: {:?}, header: {:?}", peer_addr, req);
 
         let mut code = http::StatusCode::from_u16(200).unwrap();
         if let Some(location) = self.location.get(req.path.unwrap()) {
