@@ -1,6 +1,7 @@
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
+    signal::unix::{signal, SignalKind},
 };
 use vulpes_config::{Config, LocationConfig};
 
@@ -14,6 +15,8 @@ pub struct Server {
 
 impl Server {
     pub async fn run(self) {
+        log::info!("start server");
+
         for http in self.config.http {
             for server in http.server {
                 let s = HttpServer {
@@ -25,8 +28,10 @@ impl Server {
             }
         }
 
-        log::info!("start server");
-        loop {}
+        let mut sig = signal(SignalKind::interrupt()).unwrap();
+        sig.recv().await;
+
+        log::info!("stop server");
     }
 }
 
