@@ -3,7 +3,7 @@ use tokio::{
     net::{TcpListener, TcpStream},
     signal::unix::{signal, SignalKind},
 };
-use vulpes_config::{Config, LocationConfig};
+use vulpes_parser::{Config, LocationConfig};
 
 pub fn new(config: Config) -> Server {
     Server { config: config }

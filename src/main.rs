@@ -21,10 +21,10 @@ async fn main() {
     let mut buf = String::new();
     f.read_to_string(&mut buf).unwrap();
 
-    let (_, parsed_config) = vulpes_config::parse(buf.as_bytes()).unwrap();
+    let (_, parsed_config) = vulpes_parser::parse(buf.as_bytes()).unwrap();
     log::debug!("parsed_config: {:?}", parsed_config);
 
-    let config = vulpes_config::Config::try_from(parsed_config).unwrap();
+    let config = vulpes_parser::Config::try_from(parsed_config).unwrap();
     log::debug!("config: {:?}", config);
 
     vulpes_server::new(config).run().await;

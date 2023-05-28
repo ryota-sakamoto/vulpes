@@ -838,12 +838,12 @@ dependencies = [
  "log",
  "tokio",
  "trycmd",
- "vulpes_config",
+ "vulpes_parser",
  "vulpes_server",
 ]
 
 [[package]]
-name = "vulpes_config"
+name = "vulpes_parser"
 version = "0.1.0"
 dependencies = [
  "log",
@@ -858,7 +858,7 @@ dependencies = [
  "httparse",
  "log",
  "tokio",
- "vulpes_config",
+ "vulpes_parser",
 ]
 
 [[package]]
