@@ -27,5 +27,5 @@ async fn main() {
     let config = vulpes_server::Config::try_from(parsed_config).unwrap();
     log::debug!("config: {:?}", config);
 
-    vulpes_server::run(config).await;
+    vulpes_server::run(config).await.unwrap();
 }

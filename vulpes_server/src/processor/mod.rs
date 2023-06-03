@@ -25,10 +25,9 @@ impl Server {
         }
     }
 
-    pub async fn run(self) {
-        let listener = TcpListener::bind(format!("0.0.0.0:{}", self.listen))
-            .await
-            .unwrap();
+    pub async fn run(self, tx: tokio::sync::oneshot::Sender<()>) -> std::io::Result<()> {
+        let listener = TcpListener::bind(format!("0.0.0.0:{}", self.listen)).await?;
+        tx.send(()).unwrap();
 
         loop {
             let (socket, _) = listener.accept().await.unwrap();
