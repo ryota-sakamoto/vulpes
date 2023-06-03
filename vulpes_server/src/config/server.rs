@@ -5,7 +5,7 @@ use crate::config::{
 use std::collections::HashMap;
 use vulpes_parser::ParsedValue;
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct ServerConfig {
     pub listen: Vec<String>,
     pub server_name: Vec<String>,

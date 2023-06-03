@@ -1,31 +1,35 @@
 use crate::config::{location::LocationConfig, server::ServerConfig};
+use std::collections::HashMap;
 use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
+    io::{AsyncReadExt, AsyncWriteExt, BufWriter},
     net::{TcpListener, TcpStream},
 };
 
 #[derive(Clone)]
-pub struct HttpServer {
+pub struct Server {
     listen: String,
-    _server_name: String,
-    location: std::collections::HashMap<String, LocationConfig>,
+    http_servers: HashMap<String, HttpServer>,
 }
 
-impl From<ServerConfig> for HttpServer {
-    fn from(server: ServerConfig) -> HttpServer {
-        HttpServer {
-            listen: server.listen[0].clone(),
-            _server_name: server.server_name[0].clone(),
-            location: server.location,
+impl Server {
+    pub fn new(listen: String, servers: Vec<ServerConfig>) -> Server {
+        let mut http_servers = HashMap::new();
+        for s in servers {
+            let h = HttpServer::from(s);
+            http_servers.insert(h.server_name.clone().unwrap_or("".to_owned()), h);
+        }
+
+        Server {
+            listen: listen,
+            http_servers: http_servers,
         }
     }
-}
 
-impl HttpServer {
     pub async fn run(self) {
         let listener = TcpListener::bind(format!("0.0.0.0:{}", self.listen))
             .await
             .unwrap();
+
         loop {
             let (socket, _) = listener.accept().await.unwrap();
             tokio::spawn(self.clone().process(socket));
@@ -43,7 +47,7 @@ impl HttpServer {
 
     async fn handle_tcp(&self, stream: TcpStream) -> std::io::Result<()> {
         let peer_addr = stream.peer_addr().unwrap();
-        let mut w = tokio::io::BufWriter::new(stream);
+        let mut w = BufWriter::new(stream);
 
         let mut buf = [0u8; 4096];
         let n = w.read(&mut buf).await?;
@@ -56,7 +60,52 @@ impl HttpServer {
         }
 
         log::debug!("peer_addr: {:?}, header: {:?}", peer_addr, req);
+        let s = self.get_server(&req).await;
+        s.handle(req, w).await?;
 
+        Ok(())
+    }
+
+    async fn get_server<'a, 'b>(&self, req: &httparse::Request<'a, 'b>) -> HttpServer {
+        if let Some(host) = &req
+            .headers
+            .iter()
+            .find(|h| h.name == "Host")
+            .map(|h| String::from_utf8_lossy(h.value))
+        {
+            if let Some(s) = self.http_servers.get(&host.to_string()) {
+                return s.clone();
+            }
+        }
+
+        return HttpServer {
+            server_name: None,
+            location: HashMap::new(),
+        };
+    }
+}
+
+#[derive(Clone)]
+pub struct HttpServer {
+    server_name: Option<String>,
+    location: HashMap<String, LocationConfig>,
+}
+
+impl From<ServerConfig> for HttpServer {
+    fn from(s: ServerConfig) -> HttpServer {
+        HttpServer {
+            server_name: s.server_name.first().map(|v| v.into()),
+            location: s.location,
+        }
+    }
+}
+
+impl HttpServer {
+    pub async fn handle<'a, 'b>(
+        &self,
+        req: httparse::Request<'a, 'b>,
+        mut w: BufWriter<TcpStream>,
+    ) -> std::io::Result<()> {
         let mut code = http::StatusCode::from_u16(200).unwrap();
         if let Some(location) = self.location.get(req.path.unwrap()) {
             code = location.ret;
