@@ -1,4 +1,4 @@
-use crate::config::{Config, LocationConfig};
+use crate::config::{location::LocationConfig, Config};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt},
     net::{TcpListener, TcpStream},
