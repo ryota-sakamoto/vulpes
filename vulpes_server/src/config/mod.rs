@@ -93,6 +93,7 @@ mod tests {
                                 ret: http::StatusCode::OK,
                             }
                         ),]),
+                        ret: http::StatusCode::NOT_FOUND,
                     }]
                 },]
             }

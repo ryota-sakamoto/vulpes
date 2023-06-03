@@ -81,6 +81,7 @@ impl Server {
         return HttpServer {
             server_name: None,
             location: HashMap::new(),
+            ret: http::StatusCode::NOT_FOUND,
         };
     }
 }
@@ -89,6 +90,7 @@ impl Server {
 pub struct HttpServer {
     server_name: Option<String>,
     location: HashMap<String, LocationConfig>,
+    ret: http::StatusCode,
 }
 
 impl From<ServerConfig> for HttpServer {
@@ -96,6 +98,7 @@ impl From<ServerConfig> for HttpServer {
         HttpServer {
             server_name: s.server_name.first().map(|v| v.into()),
             location: s.location,
+            ret: s.ret,
         }
     }
 }
@@ -106,7 +109,7 @@ impl HttpServer {
         req: httparse::Request<'a, 'b>,
         mut w: BufWriter<TcpStream>,
     ) -> std::io::Result<()> {
-        let mut code = http::StatusCode::from_u16(200).unwrap();
+        let mut code = self.ret;
         if let Some(location) = self.location.get(req.path.unwrap()) {
             code = location.ret;
         }
