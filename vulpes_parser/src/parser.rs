@@ -144,7 +144,11 @@ impl<'a> std::fmt::Display for ParsedValueWrapper<'a> {
                 Ok(())
             }
             ParsedValue::String(v) => {
-                write!(f, "{}", v)
+                if v.contains(" ") {
+                    write!(f, "\"{}\"", v)
+                } else {
+                    write!(f, "{}", v)
+                }
             }
         }
     }
@@ -212,9 +216,18 @@ fn parse_inline_multi_value(data: &[u8]) -> IResult<&[u8], ParsedValue> {
 }
 
 fn parse_string(data: &[u8]) -> IResult<&[u8], ParsedValue> {
-    map(take_while(is_allowed_string), |v: &[u8]| {
-        ParsedValue::String(String::from_utf8(v.to_vec()).unwrap())
-    })(data)
+    map(
+        alt((parse_quote_string, take_while(is_allowed_string))),
+        |v: &[u8]| ParsedValue::String(String::from_utf8(v.to_vec()).unwrap()),
+    )(data)
+}
+
+fn parse_quote_string(data: &[u8]) -> IResult<&[u8], &[u8]> {
+    delimited(
+        permutation((multispace0, char('"'))),
+        take_while(|v| v != b'"'),
+        permutation((char('"'), multispace0)),
+    )(data)
 }
 
 fn is_allowed_string(c: u8) -> bool {
@@ -223,7 +236,9 @@ fn is_allowed_string(c: u8) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{parse, parse_block, parse_inline_multi_value, ParsedConfig, ParsedValue};
+    use crate::parser::{
+        parse, parse_block, parse_inline_multi_value, parse_quote_string, ParsedConfig, ParsedValue,
+    };
 
     fn test_config() -> ParsedConfig {
         ParsedConfig {
@@ -252,12 +267,21 @@ mod tests {
                         label: "location".to_owned(),
                         value: ParsedValue::Value(vec![
                             ParsedValue::String("/".to_owned()),
-                            ParsedValue::Block(vec![ParsedConfig {
-                                label: "alias".to_owned(),
-                                value: ParsedValue::Value(vec![ParsedValue::String(
-                                    "/var/www/html/".to_owned(),
-                                )]),
-                            }]),
+                            ParsedValue::Block(vec![
+                                ParsedConfig {
+                                    label: "alias".to_owned(),
+                                    value: ParsedValue::Value(vec![ParsedValue::String(
+                                        "/var/www/html/".to_owned(),
+                                    )]),
+                                },
+                                ParsedConfig {
+                                    label: "return".to_owned(),
+                                    value: ParsedValue::Value(vec![
+                                        ParsedValue::String("503".to_owned()),
+                                        ParsedValue::String("Service Unavailable".to_owned()),
+                                    ]),
+                                },
+                            ]),
                         ]),
                     },
                 ]),
@@ -277,6 +301,8 @@ mod tests {
 
                     location / {
                         alias /var/www/html/;
+
+                        return 503 \"Service Unavailable\";
                     }
                 }
             }"
@@ -357,6 +383,14 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_quote_string() {
+        let (data, result) = parse_quote_string("\"Service Unavailable\"".as_bytes()).unwrap();
+
+        assert_eq!(data, vec![]);
+        assert_eq!(result, b"Service Unavailable");
+    }
+
+    #[test]
     fn test_try_into() {
         let data = ParsedConfig {
             label: "test".to_owned(),
@@ -385,6 +419,7 @@ mod tests {
         index index.html index.htm;
         location / {
             alias /var/www/html/;
+            return 503 \"Service Unavailable\";
         }
     }
 }"
