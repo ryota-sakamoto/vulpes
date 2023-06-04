@@ -36,7 +36,10 @@ impl TryFrom<Vec<ParsedConfig>> for Config {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::{http::HttpConfig, location::LocationConfig, server::ServerConfig, Config};
+    use crate::config::{
+        http::HttpConfig, location::LocationConfig, location::LocationExp, server::ServerConfig,
+        Config,
+    };
     use vulpes_parser::{ParsedConfig, ParsedValue};
 
     #[test]
@@ -90,6 +93,7 @@ mod tests {
                             "/".to_owned(),
                             LocationConfig {
                                 path: "/".to_owned(),
+                                exp: LocationExp::Empty,
                                 ret: http::StatusCode::OK,
                             }
                         ),]),

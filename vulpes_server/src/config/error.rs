@@ -8,6 +8,7 @@ pub struct ConfigError {
 #[derive(Debug)]
 pub enum ErrorKind {
     UnexpectedType { value: ParsedValue },
+    UnexpectedValue { value: String },
     ParserError(ParserError),
     ParseIntError(std::num::ParseIntError),
     InvalidStatusCode(http::status::InvalidStatusCode),

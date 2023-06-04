@@ -1,4 +1,7 @@
-use crate::config::{location::LocationConfig, server::ServerConfig};
+use crate::config::{
+    location::{LocationConfig, LocationExp},
+    server::ServerConfig,
+};
 use std::collections::HashMap;
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufWriter},
@@ -109,7 +112,7 @@ impl HttpServer {
         mut w: BufWriter<TcpStream>,
     ) -> std::io::Result<()> {
         let mut code = self.ret;
-        if let Some(location) = self.location.get(req.path.unwrap()) {
+        if let Some(location) = self.get_location(req.path.unwrap()) {
             code = location.ret;
         }
 
@@ -120,5 +123,23 @@ impl HttpServer {
         w.flush().await?;
 
         Ok(())
+    }
+
+    fn get_location(&self, path: &str) -> Option<&LocationConfig> {
+        // Exact: exact path
+        if let Some(location) = self.location.get(path) {
+            if location.exp == LocationExp::Exact {
+                return Some(location);
+            }
+        }
+
+        // Empty: prefix path
+        for (p, location) in &self.location {
+            if location.exp == LocationExp::Empty && path.starts_with(p) {
+                return Some(location);
+            }
+        }
+
+        return None;
     }
 }

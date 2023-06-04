@@ -64,20 +64,27 @@ async fn test_run() {
 async fn test_run_with_host() {
     let t = TestServer::init().await;
     let clinet = reqwest::Client::new();
+    let get = |endpoint: String| async {
+        clinet
+            .get(endpoint)
+            .header(reqwest::header::HOST, "example.com")
+            .send()
+            .await
+            .unwrap()
+    };
 
-    let res = clinet
-        .get(&t.endpoint)
-        .header(reqwest::header::HOST, "example.com")
-        .send()
-        .await
-        .unwrap();
+    let res = get(t.endpoint.clone()).await;
     assert_eq!(res.status().as_u16(), 400);
 
-    let res = clinet
-        .get(&format!("{}/503", t.endpoint))
-        .header(reqwest::header::HOST, "example.com")
-        .send()
-        .await
-        .unwrap();
+    let res = get(format!("{}/503", t.endpoint)).await;
     assert_eq!(res.status().as_u16(), 503);
+
+    let res = get(format!("{}/503/a", t.endpoint)).await;
+    assert_eq!(res.status().as_u16(), 400);
+
+    let res = get(format!("{}/test", t.endpoint)).await;
+    assert_eq!(res.status().as_u16(), 204);
+
+    let res = get(format!("{}/test/abc", t.endpoint)).await;
+    assert_eq!(res.status().as_u16(), 204);
 }
