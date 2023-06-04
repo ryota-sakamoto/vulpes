@@ -37,6 +37,7 @@ impl TryFrom<ParsedValue> for LocationConfig {
 
     fn try_from(data: ParsedValue) -> Result<LocationConfig, ConfigError> {
         let mut c = Self::default();
+        c.ret.code = http::StatusCode::OK;
 
         if let ParsedValue::Value(mut v) = data {
             log::debug!("parse value in location: {:?}", v);

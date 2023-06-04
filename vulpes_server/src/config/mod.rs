@@ -101,7 +101,10 @@ mod tests {
                                 },
                             }
                         ),]),
-                        ret: http::StatusCode::NOT_FOUND,
+                        ret: Return {
+                            code: http::StatusCode::NOT_FOUND,
+                            text: None,
+                        },
                     }]
                 },]
             }

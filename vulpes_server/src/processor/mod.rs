@@ -1,6 +1,7 @@
 use crate::config::{
     location::{LocationConfig, LocationExp},
     server::ServerConfig,
+    types,
 };
 use std::collections::HashMap;
 use tokio::{
@@ -83,7 +84,7 @@ impl Server {
         return HttpServer {
             server_name: None,
             location: HashMap::new(),
-            ret: http::StatusCode::NOT_FOUND,
+            ret: types::Return::default(),
         };
     }
 }
@@ -92,7 +93,7 @@ impl Server {
 pub struct HttpServer {
     server_name: Option<String>,
     location: HashMap<String, LocationConfig>,
-    ret: http::StatusCode,
+    ret: types::Return,
 }
 
 impl From<ServerConfig> for HttpServer {
@@ -111,24 +112,28 @@ impl HttpServer {
         req: httparse::Request<'a, 'b>,
         mut w: BufWriter<TcpStream>,
     ) -> std::io::Result<()> {
-        let mut code = self.ret;
-        let mut body = "";
+        let mut code = self.ret.code;
+        let mut body = &self.ret.text;
         if let Some(location) = self.get_location(req.path.unwrap()) {
             code = location.ret.code;
-            if let Some(text) = &location.ret.text {
-                body = text;
-            }
+            body = &location.ret.text;
         }
 
         w.write_all(format!("HTTP/1.1 {}\r\n", code).as_bytes())
             .await?;
 
-        w.write_all(format!("Content-Length: {}\r\n", body.len()).as_bytes())
-            .await?;
+        w.write_all(
+            format!(
+                "Content-Length: {}\r\n",
+                body.as_ref().map(|v| v.len()).unwrap_or(0)
+            )
+            .as_bytes(),
+        )
+        .await?;
         w.write_all(b"\r\n").await?;
 
-        if body.len() > 0 {
-            w.write_all(body.as_bytes()).await?;
+        if let Some(b) = body {
+            w.write_all(b.as_bytes()).await?;
         }
 
         w.flush().await?;

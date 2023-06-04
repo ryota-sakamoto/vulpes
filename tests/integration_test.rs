@@ -75,6 +75,7 @@ async fn test_run_with_host() {
 
     let res = get(t.endpoint.clone()).await;
     assert_eq!(res.status().as_u16(), 400);
+    assert_eq!(res.bytes().await.unwrap(), "Bad Request".as_bytes());
 
     let res = get(format!("{}/503", t.endpoint)).await;
     assert_eq!(res.status().as_u16(), 503);
@@ -82,10 +83,13 @@ async fn test_run_with_host() {
 
     let res = get(format!("{}/503/a", t.endpoint)).await;
     assert_eq!(res.status().as_u16(), 400);
+    assert_eq!(res.bytes().await.unwrap(), "Bad Request".as_bytes());
 
     let res = get(format!("{}/test", t.endpoint)).await;
     assert_eq!(res.status().as_u16(), 204);
+    assert_eq!(res.bytes().await.unwrap(), vec![]);
 
     let res = get(format!("{}/test/abc", t.endpoint)).await;
     assert_eq!(res.status().as_u16(), 204);
+    assert_eq!(res.bytes().await.unwrap(), vec![]);
 }

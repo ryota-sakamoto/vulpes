@@ -2,10 +2,19 @@ use super::error::ConfigError;
 use std::str::FromStr;
 use vulpes_parser::ParsedValue;
 
-#[derive(Debug, PartialEq, Default, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Return {
     pub code: http::StatusCode,
     pub text: Option<String>,
+}
+
+impl Default for Return {
+    fn default() -> Self {
+        Return {
+            code: http::StatusCode::NOT_FOUND,
+            text: None,
+        }
+    }
 }
 
 impl TryFrom<ParsedValue> for Return {

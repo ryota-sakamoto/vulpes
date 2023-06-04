@@ -1,6 +1,7 @@
 use crate::config::{
     error::{ConfigError, ErrorKind},
     location::LocationConfig,
+    types::Return,
 };
 use std::collections::HashMap;
 use vulpes_parser::ParsedValue;
@@ -10,7 +11,7 @@ pub struct ServerConfig {
     pub listen: Vec<String>,
     pub server_name: Vec<String>,
     pub location: HashMap<String, LocationConfig>,
-    pub ret: http::StatusCode,
+    pub ret: Return,
 }
 
 impl TryFrom<ParsedValue> for ServerConfig {
@@ -18,7 +19,6 @@ impl TryFrom<ParsedValue> for ServerConfig {
 
     fn try_from(data: ParsedValue) -> Result<ServerConfig, ConfigError> {
         let mut c = Self::default();
-        c.ret = http::StatusCode::NOT_FOUND;
 
         if let ParsedValue::Block(v) = data {
             log::debug!("parse value in server: {:?}", v);
@@ -36,8 +36,7 @@ impl TryFrom<ParsedValue> for ServerConfig {
                         c.location.insert(location.path.clone(), location);
                     }
                     "return" => {
-                        let code: u16 = v.value.try_into()?;
-                        c.ret = http::StatusCode::from_u16(code)?;
+                        c.ret = v.value.try_into()?;
                     }
                     _ => {
                         log::warn!("unknown config in server: {}", v);
