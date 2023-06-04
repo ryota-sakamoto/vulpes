@@ -6,7 +6,7 @@ const HTTP_BASE_PORT: &'static str = "8080";
 
 struct TestServer {
     child: std::process::Child,
-    port: i32,
+    endpoint: String,
     _temp_file: NamedTempFile,
 }
 
@@ -26,7 +26,7 @@ impl TestServer {
 
         TestServer {
             child: child,
-            port: port,
+            endpoint: format!("http://127.0.0.1:{}", port),
             _temp_file: temp_file,
         }
     }
@@ -53,8 +53,31 @@ impl Drop for TestServer {
 async fn test_run() {
     let t = TestServer::init().await;
 
-    let res = reqwest::get(format!("http://127.0.0.1:{}", t.port))
+    let res = reqwest::get(&t.endpoint).await.unwrap();
+    assert_eq!(res.status().as_u16(), 404);
+
+    let res = reqwest::get(&format!("{}/503", t.endpoint)).await.unwrap();
+    assert_eq!(res.status().as_u16(), 404);
+}
+
+#[tokio::test]
+async fn test_run_with_host() {
+    let t = TestServer::init().await;
+    let clinet = reqwest::Client::new();
+
+    let res = clinet
+        .get(&t.endpoint)
+        .header(reqwest::header::HOST, "example.com")
+        .send()
         .await
         .unwrap();
-    assert_eq!(res.status().as_u16(), 404);
+    assert_eq!(res.status().as_u16(), 400);
+
+    let res = clinet
+        .get(&format!("{}/503", t.endpoint))
+        .header(reqwest::header::HOST, "example.com")
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status().as_u16(), 503);
 }

@@ -69,7 +69,7 @@ impl Server {
         if let Some(host) = &req
             .headers
             .iter()
-            .find(|h| h.name == "Host")
+            .find(|h| h.name.to_uppercase() == "HOST")
             .map(|h| String::from_utf8_lossy(h.value))
         {
             if let Some(s) = self.http_servers.get(&host.to_string()) {
