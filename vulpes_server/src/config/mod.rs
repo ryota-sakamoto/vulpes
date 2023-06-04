@@ -2,6 +2,7 @@ pub mod error;
 pub mod http;
 pub mod location;
 pub mod server;
+pub mod types;
 
 use error::ConfigError;
 use vulpes_parser::ParsedConfig;
@@ -37,11 +38,8 @@ impl TryFrom<Vec<ParsedConfig>> for Config {
 #[cfg(test)]
 mod tests {
     use crate::config::{
-        http::HttpConfig,
-        location::LocationExp,
-        location::{LocationConfig, Return},
-        server::ServerConfig,
-        Config,
+        http::HttpConfig, location::LocationConfig, location::LocationExp, server::ServerConfig,
+        types::Return, Config,
     };
     use vulpes_parser::{ParsedConfig, ParsedValue};
 

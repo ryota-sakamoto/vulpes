@@ -1,5 +1,7 @@
-use crate::config::error::{ConfigError, ErrorKind};
-use std::str::FromStr;
+use crate::config::{
+    error::{ConfigError, ErrorKind},
+    types::Return,
+};
 use vulpes_parser::ParsedValue;
 
 #[derive(Debug, PartialEq, Default, Clone)]
@@ -7,12 +9,6 @@ pub struct LocationConfig {
     pub path: String,
     pub exp: LocationExp,
     pub ret: Return,
-}
-
-#[derive(Debug, PartialEq, Default, Clone)]
-pub struct Return {
-    pub code: http::StatusCode,
-    pub text: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Default, Clone)]
@@ -75,16 +71,7 @@ impl TryFrom<ParsedValue> for LocationConfig {
                 for v in v {
                     match v.label.as_ref() {
                         "return" => {
-                            let mut ret: Vec<String> = v.value.try_into()?;
-                            ret.reverse();
-
-                            if let Some(code) = ret.pop() {
-                                c.ret.code = http::StatusCode::from_str(&code)?;
-                            }
-
-                            if let Some(text) = ret.pop() {
-                                c.ret.text = Some(text);
-                            }
+                            c.ret = v.value.try_into()?;
                         }
                         _ => {
                             log::warn!("unknown config in location: {}", v);
