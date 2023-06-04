@@ -112,14 +112,25 @@ impl HttpServer {
         mut w: BufWriter<TcpStream>,
     ) -> std::io::Result<()> {
         let mut code = self.ret;
+        let mut body = "";
         if let Some(location) = self.get_location(req.path.unwrap()) {
-            code = location.ret;
+            code = location.ret.code;
+            if let Some(text) = &location.ret.text {
+                body = text;
+            }
         }
 
         w.write_all(format!("HTTP/1.1 {}\r\n", code).as_bytes())
             .await?;
-        w.write_all(b"Content-Length: 0\r\n").await?;
+
+        w.write_all(format!("Content-Length: {}\r\n", body.len()).as_bytes())
+            .await?;
         w.write_all(b"\r\n").await?;
+
+        if body.len() > 0 {
+            w.write_all(body.as_bytes()).await?;
+        }
+
         w.flush().await?;
 
         Ok(())

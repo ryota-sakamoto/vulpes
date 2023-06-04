@@ -78,6 +78,7 @@ async fn test_run_with_host() {
 
     let res = get(format!("{}/503", t.endpoint)).await;
     assert_eq!(res.status().as_u16(), 503);
+    assert_eq!(res.bytes().await.unwrap(), "Service Unavailable".as_bytes());
 
     let res = get(format!("{}/503/a", t.endpoint)).await;
     assert_eq!(res.status().as_u16(), 400);
