@@ -15,6 +15,10 @@ vulpes_parser = { path = "./vulpes_parser" }
 vulpes_server = { path = "./vulpes_server" }
 
 [dev-dependencies]
+assert_cmd = "2.0.11"
+rand = "0.8.5"
+reqwest = "0.11.18"
+tempfile = "3.5.0"
 trycmd = "0.14.16"
 
 [workspace]
