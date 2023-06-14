@@ -11,12 +11,13 @@ use tokio::{
 pub async fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let mut listen_map: HashMap<String, Vec<ServerConfig>> = HashMap::new();
     for http in config.http {
-        for server in http.server {
-            let listen_index = &server.listen[0];
-            if let Some(v) = listen_map.get_mut(listen_index) {
-                v.push(server);
-            } else {
-                listen_map.insert(listen_index.clone(), vec![server]);
+        for server in http.server.iter() {
+            for listen_index in server.listen.iter() {
+                if let Some(v) = listen_map.get_mut(listen_index) {
+                    v.push(server.clone());
+                } else {
+                    listen_map.insert(listen_index.clone(), vec![server.clone()]);
+                }
             }
         }
     }
