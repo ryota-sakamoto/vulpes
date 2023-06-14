@@ -52,10 +52,11 @@ mod tests {
                 value: ParsedValue::Block(vec![
                     ParsedConfig {
                         label: "listen".to_owned(),
-                        value: ParsedValue::Value(vec![
-                            ParsedValue::String("80".to_owned()),
-                            ParsedValue::String("8080".to_owned()),
-                        ]),
+                        value: ParsedValue::Value(vec![ParsedValue::String("80".to_owned())]),
+                    },
+                    ParsedConfig {
+                        label: "listen".to_owned(),
+                        value: ParsedValue::Value(vec![ParsedValue::String("8080".to_owned())]),
                     },
                     ParsedConfig {
                         label: "server_name".to_owned(),
@@ -91,7 +92,7 @@ mod tests {
             Config {
                 http: vec![HttpConfig {
                     server: vec![ServerConfig {
-                        listen: vec!["80".to_owned(), "8080".to_owned()],
+                        listen: vec![vec!["80".to_owned()], vec!["8080".to_owned()]],
                         server_name: vec!["example.com".to_owned()],
                         location: std::collections::HashMap::from([(
                             "/".to_owned(),

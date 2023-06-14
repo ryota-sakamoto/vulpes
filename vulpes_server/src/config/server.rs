@@ -8,7 +8,7 @@ use vulpes_parser::ParsedValue;
 
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ServerConfig {
-    pub listen: Vec<String>,
+    pub listen: Vec<Vec<String>>,
     pub server_name: Vec<String>,
     pub location: HashMap<String, LocationConfig>,
     pub ret: Return,
@@ -26,7 +26,7 @@ impl TryFrom<ParsedValue> for ServerConfig {
             for v in v {
                 match v.label.as_ref() {
                     "listen" => {
-                        c.listen = v.value.try_into()?;
+                        c.listen.push(v.value.try_into()?);
                     }
                     "server_name" => {
                         c.server_name = v.value.try_into()?;

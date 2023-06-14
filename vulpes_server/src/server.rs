@@ -12,7 +12,8 @@ pub async fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let mut listen_map: HashMap<String, Vec<ServerConfig>> = HashMap::new();
     for http in config.http {
         for server in http.server.iter() {
-            for listen_index in server.listen.iter() {
+            for listen in server.listen.iter() {
+                let listen_index = &listen[0];
                 if let Some(v) = listen_map.get_mut(listen_index) {
                     v.push(server.clone());
                 } else {
